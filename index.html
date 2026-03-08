@@ -342,6 +342,7 @@ window.addEventListener('load', function(){
               <span class="card-number" id="v-num"></span>
               <div class="front-word" id="v-word"></div>
               <div class="front-stress" id="v-stress"></div>
+              <div id="v-kr-pronun" style="font-size:15px;color:#00d4a8;font-weight:500;margin-bottom:6px;letter-spacing:1px;min-height:20px;"></div>
               <div class="front-level" id="v-level"></div>
               <button class="speak-front-btn" id="v-speak-word" onclick="event.stopPropagation();speakWord()">
                 🔊 단어 발음 듣기
@@ -696,7 +697,11 @@ function showVocabCard() {
   document.getElementById('v-card-inner').classList.remove('flipped');
   document.getElementById('v-num').textContent=(s.idx+1)+' / '+s.cards.length;
   document.getElementById('v-word').textContent=c.word;
-  document.getElementById('v-stress').textContent=c.stress||'—';
+  var stressText = c.stress || '—';
+  var koreanText = toKoreanPronun(c.stress);
+  document.getElementById('v-stress').textContent = koreanText
+    ? stressText + '  →  ' + koreanText
+    : stressText;
   document.getElementById('v-level').textContent=c.level||'';
   document.getElementById('v-meaning').textContent=c.meaning;
   document.getElementById('v-example').textContent=c.example;
@@ -860,13 +865,22 @@ async function loadVocabFromSheet() {
   status.style.color = 'var(--accent2)';
   var days = parseInt(document.getElementById('vocab-days').value);
   try {
-    var url = getSheetUrl('단어장 Word Bank');
+    var url = getSheetUrl('📖 단어장 Word Bank');
     var res = await fetch(url);
     if (!res.ok) throw new Error('시트를 불러올 수 없어요');
     var csv = await res.text();
     var lines = csv.split('\n').filter(function(l) { return l.trim(); });
     // 첫 줄은 헤더
-    var rows = lines.slice(4).map(function(l) { return parseCSVLine(l); });
+    // 헤더 자동 감지: '날짜' 또는 '단어'가 있는 행 이후부터 데이터
+    var dataStart = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var lower = lines[i].toLowerCase();
+      if (lower.indexOf('날짜') !== -1 || lower.indexOf('date') !== -1) {
+        dataStart = i + 1; break;
+      }
+    }
+    if (dataStart === 0) dataStart = 3; // 못찾으면 4행부터
+    var rows = lines.slice(dataStart).map(function(l) { return parseCSVLine(l); });
     var filtered = filterByDays(rows, days);
     if (!filtered.length) {
       status.textContent = '⚠️ 해당 기간 단어가 없어요';
@@ -875,8 +889,8 @@ async function loadVocabFromSheet() {
     }
     var cards = filtered.map(function(p) {
       return {
-        date: p[0]||'', word: p[1]||'', stress: p[2]||'', meaning: p[3]||'',
-        example: p[4]||'', source: p[5]||'', level: p[6]||'', mysentence: p[10]||''
+        date: p[0]||'', word: p[1]||'', stress: p[2]||'', krpronun: p[3]||'', meaning: p[4]||'',
+        example: p[5]||'', source: p[6]||'', level: p[7]||'', mysentence: p[11]||''
       };
     }).filter(function(c) { return c.word; });
     if (!cards.length) { status.textContent = '⚠️ 단어 데이터가 없어요'; return; }
@@ -903,12 +917,21 @@ async function loadQAFromSheet() {
   status.style.color = 'var(--accent2)';
   var days = parseInt(document.getElementById('qa-days').value);
   try {
-    var url = getSheetUrl('Q&A 트레이닝');
+    var url = getSheetUrl('💬 Q&A 트레이닝');
     var res = await fetch(url);
     if (!res.ok) throw new Error('시트를 불러올 수 없어요');
     var csv = await res.text();
     var lines = csv.split('\n').filter(function(l) { return l.trim(); });
-    var rows = lines.slice(1).map(function(l) { return parseCSVLine(l); });
+    // 헤더 자동 감지
+    var qaStart = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var lower = lines[i].toLowerCase();
+      if (lower.indexOf('날짜') !== -1 || lower.indexOf('phase') !== -1) {
+        qaStart = i + 1; break;
+      }
+    }
+    if (qaStart === 0) qaStart = 1;
+    var rows = lines.slice(qaStart).map(function(l) { return parseCSVLine(l); });
     var filtered = filterByDays(rows, days);
     if (!filtered.length) {
       status.textContent = '⚠️ 해당 기간 Q&A가 없어요';
@@ -939,6 +962,7 @@ async function loadQAFromSheet() {
     status.style.color = 'var(--accent3)';
   }
 }
+
 </script>
 </body>
 </html>

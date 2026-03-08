@@ -518,8 +518,17 @@ function setVoice() {
   }
 }
 
-// 세션 키 복원
+// 세션 키 복원 + 하드코딩 키 자동 적용
 window.addEventListener('load', function() {
+  // 파일에 키가 하드코딩되어 있으면 바로 적용
+  if (EL_API_KEY && EL_API_KEY.startsWith('sk_')) {
+    document.getElementById('api-key-wrap').style.display = 'none';
+    document.getElementById('tts-status').textContent = '✅ 연결됨 · ' + EL_VOICE;
+    document.getElementById('tts-status').style.color = '#00d4a8';
+    document.getElementById('tts-dot').style.background = '#00d4a8';
+    return;
+  }
+  // 세션에 저장된 키 복원
   var saved = sessionStorage.getItem('el_api_key');
   if (saved) {
     EL_API_KEY = saved;

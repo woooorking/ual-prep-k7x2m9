@@ -860,13 +860,13 @@ async function loadVocabFromSheet() {
   status.style.color = 'var(--accent2)';
   var days = parseInt(document.getElementById('vocab-days').value);
   try {
-    var url = getSheetUrl('📖단어장 Word Bank');
+    var url = getSheetUrl('단어장 Word Bank');
     var res = await fetch(url);
     if (!res.ok) throw new Error('시트를 불러올 수 없어요');
     var csv = await res.text();
     var lines = csv.split('\n').filter(function(l) { return l.trim(); });
     // 첫 줄은 헤더
-    var rows = lines.slice(1).map(function(l) { return parseCSVLine(l); });
+    var rows = lines.slice(4).map(function(l) { return parseCSVLine(l); });
     var filtered = filterByDays(rows, days);
     if (!filtered.length) {
       status.textContent = '⚠️ 해당 기간 단어가 없어요';
@@ -903,7 +903,7 @@ async function loadQAFromSheet() {
   status.style.color = 'var(--accent2)';
   var days = parseInt(document.getElementById('qa-days').value);
   try {
-    var url = getSheetUrl('💬Q&A 트레이닝');
+    var url = getSheetUrl('Q&A 트레이닝');
     var res = await fetch(url);
     if (!res.ok) throw new Error('시트를 불러올 수 없어요');
     var csv = await res.text();

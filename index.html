@@ -265,7 +265,8 @@ window.addEventListener('load', function(){
     <label>🔊 발음 목소리</label>
     <select id="voice-select" onchange="setVoice()" style="max-width:180px;">
       <option value="Charlotte">🇬🇧 Charlotte (영국식 여성) ★</option>
-      <option value="Daniel">🇬🇧 Daniel (영국식 남성) ★</option>
+      <option value="Charlotte">🇬🇧 Charlotte (영국식 여성) ★ IELTS 추천</option>
+      <option value="Daniel">🇬🇧 Daniel (영국식 남성) ★ IELTS</option>
       <option value="Rachel">🇺🇸 Rachel (여성, 자연스러움)</option>
       <option value="Matilda">🇺🇸 Matilda (여성, 따뜻함)</option>
       <option value="Brian">🇺🇸 Brian (남성, 차분함)</option>
@@ -491,7 +492,7 @@ var EL_VOICE_ID_MAP = {
   'Daniel':    'onwK4e9ZLuTAKqWW03F9',
   'Brian':     'nPczCjzI2devNBz1zQrb',
 };
-var EL_VOICE = 'Charlotte'; // 기본: 영국식 여성
+var EL_VOICE = 'Charlotte'; // 기본: 영국식 여성 ★
 var ttsAudio = null;
 
 function saveApiKey() {
@@ -562,7 +563,7 @@ async function speak(text, btnId) {
       body: JSON.stringify({
         text: text,
         model_id: 'eleven_multilingual_v2',
-        voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: 2.0 }
+        voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: 1.2 }
       })
     });
 
@@ -667,8 +668,7 @@ function showVocabCard() {
   if(c.mysentence){document.getElementById('v-mysentence').textContent=c.mysentence;mw.style.display='block';}
   else mw.style.display='none';
   updateProgress('vocab');
-  // 카드 전환 후 단어 자동 발음 (0.5초 후)
-  setTimeout(function(){ speak(c.word,'v-speak-word'); }, 500);
+  // 자동 재생 OFF — 버튼 클릭 시에만 재생 (크레딧 절약)
 }
 
 // ══ Q&A 카드 ══
@@ -707,8 +707,7 @@ function showQACard() {
   document.getElementById('q-claude').textContent=c.claude||c.gemini||'—';
   document.getElementById('q-tip').textContent=c.tip||c.fix||'—';
   updateProgress('qa');
-  // 질문 자동 발음
-  setTimeout(function(){ speak(c.question,'q-speak-question'); }, 500);
+  // 자동 재생 OFF — 버튼 클릭 시에만 재생 (크레딧 절약)
 }
 
 // ══ 공통 ══

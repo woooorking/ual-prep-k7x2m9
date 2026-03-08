@@ -297,8 +297,22 @@ window.addEventListener('load', function(){
 
   <!-- ══ 단어 탭 ══ -->
   <div id="tab-vocab">
+    <div class="input-panel" id="vocab-auto-panel">
+      <h3>☁️ 구글 시트에서 자동 불러오기</h3>
+      <p>구글 시트 단어장에서 최근 단어를 자동으로 불러와요.</p>
+      <div class="btn-row" style="margin-bottom:12px;">
+        <button class="btn btn-primary" onclick="loadVocabFromSheet()">🔄 구글 시트에서 불러오기</button>
+        <select id="vocab-days" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;">
+          <option value="3">최근 3일</option>
+          <option value="7" selected>최근 7일</option>
+          <option value="30">최근 30일</option>
+          <option value="0">전체</option>
+        </select>
+      </div>
+      <div id="vocab-sheet-status" style="font-size:12px;color:var(--text2);margin-bottom:8px;"></div>
+    </div>
     <div class="input-panel">
-      <h3>📋 단어장 데이터 붙여넣기</h3>
+      <h3>📋 단어장 데이터 직접 붙여넣기</h3>
       <p>구글 시트 단어장에서 <strong>날짜·단어·강세·뜻·예문·출처·레벨</strong> 열을 복사해서 붙여넣으세요.<br>탭으로 구분된 형식 (구글 시트에서 드래그 복사하면 자동 탭 구분)</p>
       <textarea id="vocabInput" placeholder="예시:
 2026-03-08	undoubtedly	un-DOUBT-ed-ly	의심할 여지 없이	It is undoubtedly the best decision.	Gemini 수업	B2
@@ -391,8 +405,22 @@ window.addEventListener('load', function(){
 
   <!-- ══ Q&A 탭 ══ -->
   <div id="tab-qa" class="hidden">
+    <div class="input-panel" id="qa-auto-panel">
+      <h3>☁️ 구글 시트에서 자동 불러오기</h3>
+      <p>구글 시트 Q&A 트레이닝에서 최근 내용을 자동으로 불러와요.</p>
+      <div class="btn-row" style="margin-bottom:12px;">
+        <button class="btn btn-primary" onclick="loadQAFromSheet()">🔄 구글 시트에서 불러오기</button>
+        <select id="qa-days" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;">
+          <option value="3">최근 3일</option>
+          <option value="7" selected>최근 7일</option>
+          <option value="30">최근 30일</option>
+          <option value="0">전체</option>
+        </select>
+      </div>
+      <div id="qa-sheet-status" style="font-size:12px;color:var(--text2);margin-bottom:8px;"></div>
+    </div>
     <div class="input-panel">
-      <h3>📋 Q&A 데이터 붙여넣기</h3>
+      <h3>📋 Q&A 데이터 직접 붙여넣기</h3>
       <p>구글 시트 Q&A 트레이닝에서 <strong>날짜·Phase·질문·내 답변·Gemini 수정·Claude 최종·핵심 표현</strong> 열을 복사해서 붙여넣으세요.</p>
       <textarea id="qaInput" placeholder="예시:
 2026-03-08	Phase 1	Describe your current home.	I live in Seoul.	I live in Seoul and my home is very conveniently located.	I currently live in Seoul, and what I appreciate most is how conveniently located my home is.	conveniently located · long for"></textarea>
@@ -788,6 +816,129 @@ document.addEventListener('keydown',function(e){
     }
   }
 });
+
+// ══ 구글 시트 자동 불러오기 ═══════════════════════════════
+var SHEET_ID = '1RcIFnTvIwt-2e3TNXdhxlYJXEnuEXrLSZaAbsMWDA2Q';
+
+function getSheetUrl(sheetName) {
+  return 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(sheetName);
+}
+
+function parseCSVLine(line) {
+  var result = [];
+  var cur = '';
+  var inQuote = false;
+  for (var i = 0; i < line.length; i++) {
+    var ch = line[i];
+    if (ch === '"') {
+      if (inQuote && line[i+1] === '"') { cur += '"'; i++; }
+      else { inQuote = !inQuote; }
+    } else if (ch === ',' && !inQuote) {
+      result.push(cur); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+function filterByDays(rows, days) {
+  if (days === 0) return rows;
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  return rows.filter(function(r) {
+    if (!r[0]) return false;
+    var d = new Date(r[0]);
+    return !isNaN(d) && d >= cutoff;
+  });
+}
+
+async function loadVocabFromSheet() {
+  var status = document.getElementById('vocab-sheet-status');
+  status.textContent = '⏳ 불러오는 중...';
+  status.style.color = 'var(--accent2)';
+  var days = parseInt(document.getElementById('vocab-days').value);
+  try {
+    var url = getSheetUrl('📖단어장 Word Bank');
+    var res = await fetch(url);
+    if (!res.ok) throw new Error('시트를 불러올 수 없어요');
+    var csv = await res.text();
+    var lines = csv.split('\n').filter(function(l) { return l.trim(); });
+    // 첫 줄은 헤더
+    var rows = lines.slice(1).map(function(l) { return parseCSVLine(l); });
+    var filtered = filterByDays(rows, days);
+    if (!filtered.length) {
+      status.textContent = '⚠️ 해당 기간 단어가 없어요';
+      status.style.color = 'var(--accent4)';
+      return;
+    }
+    var cards = filtered.map(function(p) {
+      return {
+        date: p[0]||'', word: p[1]||'', stress: p[2]||'', meaning: p[3]||'',
+        example: p[4]||'', source: p[5]||'', level: p[6]||'', mysentence: p[10]||''
+      };
+    }).filter(function(c) { return c.word; });
+    if (!cards.length) { status.textContent = '⚠️ 단어 데이터가 없어요'; return; }
+    state.vocab.cards = cards;
+    state.vocab.idx = 0;
+    state.vocab.flipped = false;
+    state.vocab.marks = {};
+    showVocabCard();
+    document.getElementById('vocab-cards').classList.remove('hidden');
+    document.getElementById('vocab-empty').classList.add('hidden');
+    document.getElementById('vocab-complete').style.display = 'none';
+    updateStats('vocab');
+    status.textContent = '✅ ' + cards.length + '개 단어 불러왔어요!';
+    status.style.color = 'var(--accent2)';
+  } catch(e) {
+    status.textContent = '❌ 오류: ' + e.message + ' (시트 공유 설정 확인)';
+    status.style.color = 'var(--accent3)';
+  }
+}
+
+async function loadQAFromSheet() {
+  var status = document.getElementById('qa-sheet-status');
+  status.textContent = '⏳ 불러오는 중...';
+  status.style.color = 'var(--accent2)';
+  var days = parseInt(document.getElementById('qa-days').value);
+  try {
+    var url = getSheetUrl('💬Q&A 트레이닝');
+    var res = await fetch(url);
+    if (!res.ok) throw new Error('시트를 불러올 수 없어요');
+    var csv = await res.text();
+    var lines = csv.split('\n').filter(function(l) { return l.trim(); });
+    var rows = lines.slice(1).map(function(l) { return parseCSVLine(l); });
+    var filtered = filterByDays(rows, days);
+    if (!filtered.length) {
+      status.textContent = '⚠️ 해당 기간 Q&A가 없어요';
+      status.style.color = 'var(--accent4)';
+      return;
+    }
+    var cards = filtered.map(function(p) {
+      return {
+        date: p[0]||'', phase: p[1]||'', question: p[2]||'',
+        my: p[3]||'', gemini: p[4]||'', claude: p[5]||'',
+        fix: p[6]||'', tip: p[7]||''
+      };
+    }).filter(function(c) { return c.question; });
+    if (!cards.length) { status.textContent = '⚠️ Q&A 데이터가 없어요'; return; }
+    state.qa.cards = cards;
+    state.qa.idx = 0;
+    state.qa.flipped = false;
+    state.qa.marks = {};
+    showQACard();
+    document.getElementById('qa-cards').classList.remove('hidden');
+    document.getElementById('qa-empty').classList.add('hidden');
+    document.getElementById('qa-complete').style.display = 'none';
+    updateStats('qa');
+    status.textContent = '✅ ' + cards.length + '개 Q&A 불러왔어요!';
+    status.style.color = 'var(--accent2)';
+  } catch(e) {
+    status.textContent = '❌ 오류: ' + e.message + ' (시트 공유 설정 확인)';
+    status.style.color = 'var(--accent3)';
+  }
+}
 </script>
 </body>
 </html>
